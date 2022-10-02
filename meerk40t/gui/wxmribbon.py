@@ -291,7 +291,7 @@ class RibbonPanel(wx.Panel):
         self.ribbon_pages = []
         context.setting(bool, "ribbon_art", False)
         context.setting(bool, "ribbon_hide_labels", False)
-
+        self.no_labels = self.is_dark or self.context.ribbon_hide_labels
         # Some helper variables for showing / hiding the toolbar
         self.panels_shown = True
         self.minmax = None
@@ -681,6 +681,10 @@ class RibbonPanel(wx.Panel):
     def set_tool_extended_buttons(self, new_values, old_values):
         self.set_buttons(new_values, self.tool_extended_button_bar)
 
+    @lookup_listener("button/basic_properties")
+    def set_tool_basic_properties_buttons(self, new_values, old_values):
+        self.set_buttons(new_values, self.tool_basic_properties_button_bar)
+
     @lookup_listener("button/geometry")
     def set_geometry_buttons(self, new_values, old_values):
         self.set_buttons(new_values, self.geometry_button_bar)
@@ -764,9 +768,9 @@ class RibbonPanel(wx.Panel):
 
         if self.is_dark or self.context.ribbon_art:
             provider = self._ribbon.GetArtProvider()
-            _update_ribbon_artprovider_for_dark_mode(
-                provider, hide_labels=self.context.ribbon_hide_labels
-            )
+            _update_ribbon_artprovider_for_dark_mode(provider)
+        if self.no_labels:
+            _update_ribbon_artprovider_for_no_labels(provider)
         self.ribbon_position_aspect_ratio = True
         self.ribbon_position_ignore_update = False
 
@@ -811,7 +815,7 @@ class RibbonPanel(wx.Panel):
         self.project_panel = MyRibbonPanel(
             parent=home,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Project"),
+            label="" if self.no_labels else _("Project"),
             agwStyle=panel_style,
         )
         self.ribbon_panels.append(self.project_panel)
@@ -822,7 +826,7 @@ class RibbonPanel(wx.Panel):
         self.jobstart_panel = MyRibbonPanel(
             parent=home,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Execute"),
+            label="" if self.no_labels else _("Execute"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -834,7 +838,7 @@ class RibbonPanel(wx.Panel):
         self.preparation_panel = MyRibbonPanel(
             parent=home,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Prepare"),
+            label="" if self.no_labels else _("Prepare"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -846,7 +850,7 @@ class RibbonPanel(wx.Panel):
         self.control_panel = MyRibbonPanel(
             parent=home,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Control"),
+            label="" if self.no_labels else _("Control"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -858,7 +862,7 @@ class RibbonPanel(wx.Panel):
         self.config_panel = MyRibbonPanel(
             parent=config,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Configuration"),
+            label="" if self.no_labels else _("Configuration"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -870,7 +874,7 @@ class RibbonPanel(wx.Panel):
         self.device_panel = MyRibbonPanel(
             parent=home,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Devices"),
+            label="" if self.no_labels else _("Devices"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -882,7 +886,7 @@ class RibbonPanel(wx.Panel):
         self.device_panel_copy = MyRibbonPanel(
             parent=config,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Device"),
+            label="" if self.no_labels else _("Device"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -894,7 +898,7 @@ class RibbonPanel(wx.Panel):
         self.tool_panel = MyRibbonPanel(
             parent=tool,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Design"),
+            label="" if self.no_labels else _("Design"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -906,7 +910,7 @@ class RibbonPanel(wx.Panel):
         self.group_panel = MyRibbonPanel(
             parent=tool,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Group"),
+            label="" if self.no_labels else _("Group"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -918,7 +922,7 @@ class RibbonPanel(wx.Panel):
         self.tool_extended_panel = MyRibbonPanel(
             parent=tool,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Properties"),
+            label="" if self.no_labels else _("Properties"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -927,10 +931,24 @@ class RibbonPanel(wx.Panel):
         self.tool_extended_button_bar = button_bar
         self.ribbon_bars.append(button_bar)
 
+        self.tool_basic_properties_panel = MyRibbonPanel(
+            parent=tool,
+            id=wx.ID_ANY,
+            label="" if self.no_labels else _("Attributes"),
+            minimised_icon=icons8_opened_folder_50.GetBitmap(),
+            agwStyle=panel_style,
+            #  | RB.RIBBON_PANEL_STRETCH
+            #  | RB.RIBBON_PANEL_FLEXIBLE,
+        )
+        self.ribbon_panels.append(self.tool_basic_properties_panel)
+        button_bar = RibbonButtonBar(self.tool_basic_properties_panel)
+        self.tool_basic_properties_button_bar = button_bar
+        self.ribbon_bars.append(button_bar)
+
         self.modify_panel = MyRibbonPanel(
             parent=modify,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Modification"),
+            label="" if self.no_labels else _("Modification"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -942,7 +960,7 @@ class RibbonPanel(wx.Panel):
         self.geometry_panel = MyRibbonPanel(
             parent=modify,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Geometry"),
+            label="" if self.no_labels else _("Geometry"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -954,7 +972,7 @@ class RibbonPanel(wx.Panel):
         self.align_panel = MyRibbonPanel(
             parent=modify,
             id=wx.ID_ANY,
-            label="" if self.is_dark else _("Alignment"),
+            label="" if self.no_labels else _("Alignment"),
             minimised_icon=icons8_opened_folder_50.GetBitmap(),
             agwStyle=panel_style,
         )
@@ -1039,8 +1057,29 @@ class RibbonPanel(wx.Panel):
 # RIBBON_ART_TOOLBAR_HOVER_BORDER_COLOUR = 87
 # RIBBON_ART_TOOLBAR_FACE_COLOUR = 88
 
+def _update_ribbon_artprovider_for_no_labels(provider):
+    def _set_ribbon_colour(provider, art_id_list, colour):
+        for id_ in art_id_list:
+            try:
+                provider.SetColour(id_, colour)
+            except:
+                # Not all colorcodes are supported by all providers.
+                # So lets ignore it
+                pass
 
-def _update_ribbon_artprovider_for_dark_mode(provider, hide_labels=False):
+    font = wx.Font(
+        1, wx.FONTFAMILY_ROMAN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL
+    )
+    provider.SetFont(RB.RIBBON_ART_BUTTON_BAR_LABEL_FONT, font)
+    provider.SetFont(RB.RIBBON_ART_PANEL_LABEL_FONT, font)
+    fontcolors = [
+        RB.RIBBON_ART_BUTTON_BAR_LABEL_COLOUR,
+        RB.RIBBON_ART_PANEL_LABEL_COLOUR,
+    ]
+    BTNFACE = copy.copy(wx.SystemSettings().GetColour(wx.SYS_COLOUR_BTNFACE))
+    _set_ribbon_colour(provider, fontcolors, BTNFACE)
+
+def _update_ribbon_artprovider_for_dark_mode(provider):
     def _set_ribbon_colour(provider, art_id_list, colour):
         for id_ in art_id_list:
             try:
@@ -1147,14 +1186,3 @@ def _update_ribbon_artprovider_for_dark_mode(provider, hide_labels=False):
         RB.RIBBON_ART_TAB_HOVER_BACKGROUND_TOP_GRADIENT_COLOUR,
     ]
     _set_ribbon_colour(provider, lowlights, INACTIVE_BG)
-    if hide_labels:
-        font = wx.Font(
-            1, wx.FONTFAMILY_ROMAN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL
-        )
-        provider.SetFont(RB.RIBBON_ART_BUTTON_BAR_LABEL_FONT, font)
-        provider.SetFont(RB.RIBBON_ART_PANEL_LABEL_FONT, font)
-        fontcolors = [
-            RB.RIBBON_ART_BUTTON_BAR_LABEL_COLOUR,
-            RB.RIBBON_ART_PANEL_LABEL_COLOUR,
-        ]
-        _set_ribbon_colour(provider, fontcolors, BTNFACE)

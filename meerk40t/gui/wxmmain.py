@@ -30,6 +30,7 @@ from meerk40t.kernel import lookup_listener, signal_listener
 from ..core.units import UNITS_PER_INCH, UNITS_PER_PIXEL, Length
 from ..svgelements import Color, Matrix, Path
 from .icons import (
+    EmptyIcon,
     STD_ICON_SIZE,
     icon_cag_common_50,
     icon_cag_subtract_50,
@@ -64,6 +65,14 @@ from .icons import (
     icons8_vector_50,
     icons_evenspace_horiz,
     icons_evenspace_vert,
+    cap_butt_20,
+    cap_round_20,
+    cap_square_20,
+    fill_evenodd,
+    fill_nonzero,
+    join_bevel,
+    join_miter,
+    join_round,
     set_icon_appearance,
 )
 from .laserrender import (
@@ -350,10 +359,26 @@ class MeerK40t(MWindow):
                 "choices": ["large", "big", "default", "small", "tiny"],
                 "label": _("Icon size:"),
                 "tip": _(
-                    "Appearance of all icons in the GUI (requires a restart to take effect))"
+                    "Appearance of all icons in the GUI (requires a restart to take effect)"
                 ),
                 "page": "Gui",
                 "section": "Appearance",
+                "subsection": "_tool_",
+            },
+            {
+                "attr": "ribbon_hide_labels",
+                "object": self.context.root,
+                "default": False,
+                "type": bool,
+                "label": _("Suppress labels"),
+                "tip": _(
+                    "Suppress the display of labels in the toolbar at the top of the window\n" +
+                    "a) requires a restart to take effect\n" +
+                    "b) will always suppressed if your system is in dark mode"
+                ),
+                "page": "Gui",
+                "section": "Appearance",
+                "subsection": "_tool_",
             },
         ]
         context.kernel.register_choices("preferences", choices)
@@ -626,8 +651,7 @@ class MeerK40t(MWindow):
     @staticmethod
     def sub_register(kernel):
         bsize_normal = STD_ICON_SIZE
-        # bsize_small = STD_ICON_SIZE / 2
-        bsize_small = STD_ICON_SIZE
+        bsize_small = STD_ICON_SIZE / 2
         kernel.register(
             "button/project/Open",
             {
@@ -818,6 +842,206 @@ class MeerK40t(MWindow):
             },
         )
 
+        # We are going to add a couple of buttons for shape-attributes
+        # cap_butt_20,
+        # cap_round_20,
+        # cap_square_20,
+        # fill_evenodd,
+        # fill_nonzero,
+        # join_bevel,
+        # join_miter,
+        # join_round,
+        bsize = bsize_small
+        def right_elems(attribute_to_check):
+            result = False
+            data = list(kernel.elements.elems(emphasized=True))
+            if len(data) > 0:
+                result = True
+                for node in data:
+                    if not hasattr(node, attribute_to_check):
+                        result = False
+                        break
+            return result
+
+        colors = (
+            0xFFFFFF,
+            0x000000,
+            0xFF0000,
+            0x00FF00,
+            0x0000FF,
+            0xFFFF00,
+            0xFF00FF,
+            0x00FFFF,
+            0xFFFFFF,
+        )
+        def set_stroke(wcol):
+            def setter(event):
+                if kernel.elements.classify_on_color:
+                    option = " --classify"
+                else:
+                    option = ""
+                if wcol is None:
+                    s_col = "none"
+                else:
+                    s_col = wcol.GetAsString(wx.C2S_HTML_SYNTAX)
+                s_str = f"stroke {s_col}{option}\n"
+                kernel.elements(s_str)
+            # print(f"Set Stroke was called with {wcol.GetAsString(wx.C2S_HTML_SYNTAX)}")
+            return setter
+
+        def set_fill(wcol):
+            def setter(event):
+                if kernel.elements.classify_on_color:
+                    option = " --classify"
+                else:
+                    option = ""
+                if wcol is None:
+                    s_col = "none"
+                else:
+                    s_col = wcol.GetAsString(wx.C2S_HTML_SYNTAX)
+                s_str = f"fill {s_col}{option}\n"
+                kernel.elements(s_str)
+
+            return setter
+
+        for idx, color in enumerate(colors):
+            wcol = wx.Colour(color)
+            tip_str = "Set stroke-color (right click set fill color)"
+            msg = None
+            if idx == 0:
+                msg = "[red]X"
+            icon = EmptyIcon(size=bsize, color=wcol, msg=msg)
+            if idx==0:
+                wcol = None
+                tip_str = "Clear stroke-color (right click clear fill color)"
+            kernel.register(
+                f"button/basic_properties/color{idx}",
+                {
+                    "label": _(""),
+                    "icon": icon,
+                    "tip": _(tip_str),
+                    "action": set_stroke(wcol),
+                    "right": set_fill(wcol),
+                    "size": bsize,
+                    "identifier": f"color_{idx}",
+                    "rule_enabled": lambda cond: right_elems("stroke"),
+                }
+            )
+
+        kernel.register(
+            "button/basic_properties/joinbevel",
+            {
+                "label": _(""),
+                "icon": join_bevel,
+                "tip": _(
+                    "Set the join of the lines to a bevel-shape"
+                ),
+                "action": lambda v: kernel.elements("linejoin bevel\n"),
+                "size": bsize,
+                "identifier": "join_bevel",
+                "rule_enabled": lambda cond: right_elems("linejoin"),
+            }
+        )
+        kernel.register(
+            "button/basic_properties/joinround",
+            {
+                "label": _(""),
+                "icon": join_round,
+                "tip": _(
+                    "Set the join of the lines to a bevel-shape"
+                ),
+                "action": lambda v: kernel.elements("linejoin round\n"),
+                "size": bsize,
+                "identifier": "join_round",
+                "rule_enabled": lambda cond: right_elems("linejoin"),
+            }
+        )
+        kernel.register(
+            "button/basic_properties/joinmiter",
+            {
+                "label": _(""),
+                "icon": join_miter,
+                "tip": _(
+                    "Set the join of the lines to a miter-shape"
+                ),
+                "action": lambda v: kernel.elements("linejoin miter\n"),
+                "size": bsize,
+                "identifier": "join_miter",
+                "rule_enabled": lambda cond: right_elems("linejoin"),
+            }
+        )
+
+        kernel.register(
+            "button/basic_properties/capbutt",
+            {
+                "label": _(""),
+                "icon": cap_butt_20,
+                "tip": _(
+                    "Set the end of the lines to a butt-shape"
+                ),
+                "action": lambda v: kernel.elements("linecap butt\n"),
+                "size": bsize,
+                "identifier": "cap_butt",
+                "rule_enabled": lambda cond: right_elems("linecap"),
+            }
+        )
+        kernel.register(
+            "button/basic_properties/capround",
+            {
+                "label": _(""),
+                "icon": cap_round_20,
+                "tip": _(
+                    "Set the end of the lines to a round-shape"
+                ),
+                "action": lambda v: kernel.elements("linecap round\n"),
+                "size": bsize,
+                "identifier": "cap_round",
+                "rule_enabled": lambda cond: right_elems("linecap"),
+            }
+        )
+        kernel.register(
+            "button/basic_properties/capsquare",
+            {
+                "label": _(""),
+                "icon": cap_square_20,
+                "tip": _(
+                    "Set the end of the lines to a butt-shape"
+                ),
+                "action": lambda v: kernel.elements("linecap square\n"),
+                "size": bsize,
+                "identifier": "cap_square",
+                "rule_enabled": lambda cond: right_elems("linecap"),
+            }
+        )
+
+        kernel.register(
+            "button/basic_properties/fillnonzero",
+            {
+                "label": _(""),
+                "icon": fill_nonzero,
+                "tip": _(
+                    "Set the fillstyle to non-zero (regular)"
+                ),
+                "action": lambda v: kernel.elements("fillrule nonzero\n"),
+                "size": bsize,
+                "identifier": "fillrule_1",
+                "rule_enabled": lambda cond: right_elems("fillrule"),
+            }
+        )
+        kernel.register(
+            "button/basic_properties/fillevenodd",
+            {
+                "label": _(""),
+                "icon": fill_evenodd,
+                "tip": _(
+                    "Set the fillstyle to even-odd (alternating areas)"
+                ),
+                "action": lambda v: kernel.elements("fillrule evenodd\n"),
+                "size": bsize,
+                "identifier": "fillrule_2",
+                "rule_enabled": lambda cond: right_elems("fillrule"),
+            }
+        )
         # Default Size for smaller buttons
         buttonsize = STD_ICON_SIZE / 2
 
@@ -828,7 +1052,7 @@ class MeerK40t(MWindow):
                 "icon": icons8_flip_vertical,
                 "tip": _("Flip the selected element vertically"),
                 "action": lambda v: kernel.elements("scale 1 -1\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -842,7 +1066,7 @@ class MeerK40t(MWindow):
                 "icon": icons8_mirror_horizontal,
                 "tip": _("Mirror the selected element horizontally"),
                 "action": lambda v: kernel.elements("scale -1 1\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -856,7 +1080,7 @@ class MeerK40t(MWindow):
                 "icon": icons8_rotate_right_50,
                 "tip": _("Rotate the selected element clockwise by 90 deg"),
                 "action": lambda v: kernel.elements("rotate 90deg\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -870,7 +1094,7 @@ class MeerK40t(MWindow):
                 "icon": icons8_rotate_left_50,
                 "tip": _("Rotate the selected element counterclockwise by 90 deg"),
                 "action": lambda v: kernel.elements("rotate -90deg\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -884,7 +1108,7 @@ class MeerK40t(MWindow):
                 "icon": icon_cag_union_50,
                 "tip": _("Create a union of the selected elements"),
                 "action": lambda v: kernel.elements("element union\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -898,7 +1122,7 @@ class MeerK40t(MWindow):
                 "icon": icon_cag_subtract_50,
                 "tip": _("Create a difference of the selected elements"),
                 "action": lambda v: kernel.elements("element difference\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -912,7 +1136,7 @@ class MeerK40t(MWindow):
                 "icon": icon_cag_xor_50,
                 "tip": _("Create a xor of the selected elements"),
                 "action": lambda v: kernel.elements("element xor\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -926,7 +1150,7 @@ class MeerK40t(MWindow):
                 "icon": icon_cag_common_50,
                 "tip": _("Create a intersection of the selected elements"),
                 "action": lambda v: kernel.elements("element intersection\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -1042,7 +1266,7 @@ class MeerK40t(MWindow):
                     "align push first individual left pop\n"
                 ),
                 "right": lambda v: kernel.elements("align push bed group left pop\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -1065,7 +1289,7 @@ class MeerK40t(MWindow):
                     "align push first individual right pop\n"
                 ),
                 "right": lambda v: kernel.elements("align push bed group right pop\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -1084,7 +1308,7 @@ class MeerK40t(MWindow):
                     "align push first individual top pop\n"
                 ),
                 "right": lambda v: kernel.elements("align push bed group top pop\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -1103,7 +1327,7 @@ class MeerK40t(MWindow):
                     "align push first individual bottom pop\n"
                 ),
                 "right": lambda v: kernel.elements("align push bed group bottom pop\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -1124,7 +1348,7 @@ class MeerK40t(MWindow):
                 "right": lambda v: kernel.elements(
                     "align push bed group centerh pop\n"
                 ),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -1145,7 +1369,7 @@ class MeerK40t(MWindow):
                 "right": lambda v: kernel.elements(
                     "align push bed group centerv pop\n"
                 ),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -1159,7 +1383,7 @@ class MeerK40t(MWindow):
                 "icon": icons_evenspace_horiz,
                 "tip": _("Distribute Space Horizontally"),
                 "action": lambda v: kernel.elements("align spaceh\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
@@ -1173,7 +1397,7 @@ class MeerK40t(MWindow):
                 "icon": icons_evenspace_vert,
                 "tip": _("Distribute Space Vertically"),
                 "action": lambda v: kernel.elements("align spacev\n"),
-                "size": bsize_small,
+                "size": bsize_normal,
                 "rule_enabled": lambda cond: len(
                     list(kernel.elements.elems(emphasized=True))
                 )
