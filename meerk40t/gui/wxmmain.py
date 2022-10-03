@@ -363,22 +363,6 @@ class MeerK40t(MWindow):
                 ),
                 "page": "Gui",
                 "section": "Appearance",
-                "subsection": "_tool_",
-            },
-            {
-                "attr": "ribbon_hide_labels",
-                "object": self.context.root,
-                "default": False,
-                "type": bool,
-                "label": _("Suppress labels"),
-                "tip": _(
-                    "Suppress the display of labels in the toolbar at the top of the window\n" +
-                    "a) requires a restart to take effect\n" +
-                    "b) will always suppressed if your system is in dark mode"
-                ),
-                "page": "Gui",
-                "section": "Appearance",
-                "subsection": "_tool_",
             },
         ]
         context.kernel.register_choices("preferences", choices)
