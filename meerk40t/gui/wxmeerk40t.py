@@ -45,6 +45,7 @@ from .icons import (
 from .imagesplitter import RenderSplit
 from .keymap import Keymap
 from .lasertoolpanel import LaserTool
+from .auto_placement import DumpFill
 from .materialmanager import MaterialManager
 from .materialtest import TemplateTool
 from .notes import Notes
@@ -908,6 +909,7 @@ class wxMeerK40t(wx.App, Module):
         kernel.register("window/SplitImage", RenderSplit)
         kernel.register("window/OperationInfo", OperationInformation)
         kernel.register("window/Lasertool", LaserTool)
+        kernel.register("window/DumpFill", DumpFill)
         kernel.register("window/Templatetool", TemplateTool)
         kernel.register("window/Hingetool", LivingHingeTool)
         kernel.register("window/Kerftest", KerfTool)
