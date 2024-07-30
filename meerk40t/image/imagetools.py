@@ -1400,7 +1400,7 @@ def plugin(kernel, lifecycle=None):
             update_image_node(inode)
         return "image", data
 
-    @context.console_option("minimal", "m", type=int, help=_("minimal area"), default=2)
+    @context.console_option("minimal", "m", type=float, help=_("minimal area"), default=2.0)
     @context.console_option(
         "outer",
         "o",
@@ -1456,6 +1456,21 @@ def plugin(kernel, lifecycle=None):
         post=None,
         **kwargs,
     ):
+        
+        def org_bounds(node):
+            image_width, image_height = node.image.size
+            matrix = node.matrix
+            x0, y0 = matrix.point_in_matrix_space((0, 0))
+            x1, y1 = matrix.point_in_matrix_space((image_width, image_height))
+            x2, y2 = matrix.point_in_matrix_space((0, image_height))
+            x3, y3 = matrix.point_in_matrix_space((image_width, 0))
+            return (
+                min(x0, x1, x2, x3),
+                min(y0, y1, y2, y3),
+                max(x0, x1, x2, x3),
+                max(y0, y1, y2, y3),
+            )
+        
         try:
             import cv2
             import numpy as np
@@ -1492,7 +1507,7 @@ def plugin(kernel, lifecycle=None):
                 continue
             if not hasattr(inode, "bounds"):
                 continue
-            bb = inode.bounds
+            bb = org_bounds(inode)
             ox = bb[0]
             oy = bb[1]
             coord_width = bb[2] - bb[0]
