@@ -545,6 +545,7 @@ class Elemental(Service):
         self.setting(bool, "uniform_svg", False)
         self.setting(float, "svg_ppi", 96.0)
         self.setting(bool, "operation_default_empty", True)
+        self.setting(bool, "remove_non_used_default_ops", False)
 
         self.op_data = Settings(
             self.kernel.name, "operations.cfg", create_backup=True
