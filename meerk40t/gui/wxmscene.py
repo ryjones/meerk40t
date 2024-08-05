@@ -1141,6 +1141,17 @@ class MeerK40tScenePanel(wx.Panel):
             )
             self.widget_scene.request_refresh()
 
+        def identify_objects(event=None):
+            """
+            This will open a dialog to 
+            """
+            dlg = wx.Dialog(self, wx.ID_ANY, _("Identify Objects"), style=wx.DEFAULT_DIALOG_STYLE)
+            
+            res = dlg.ShowModal()
+            dlg.Destroy()
+
+
+
         def stop_auto_update(event=None):
             devlabel = self.context.device.label
             to_stop = []
@@ -1207,6 +1218,9 @@ class MeerK40tScenePanel(wx.Panel):
             menu.AppendSeparator()
             id5 = menu.Append(wx.ID_ANY, _("Remove Background"), "")
             self.Bind(wx.EVT_MENU, remove_background, id=id5.GetId())
+            menu.AppendSeparator()
+            id6 = menu.Append(wx.ID_ANY, _("Identify Objects"), "")
+            self.Bind(wx.EVT_MENU, identify_objects, id=id6.GetId())
         # Do we have a timer called .updatebg?
         devlabel = self.context.device.label
         we_have_a_job = False
