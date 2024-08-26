@@ -60,6 +60,7 @@ from .propertypanels.imageproperty import (
     ImageModificationPanel,
     ImagePropertyPanel,
     ImageVectorisationPanel,
+    ImageContourPanel,
 )
 from .propertypanels.inputproperty import InputPropertyPanel
 from .propertypanels.opbranchproperties import OpBranchPanel
@@ -880,6 +881,9 @@ class wxMeerK40t(wx.App, Module):
         kernel.register("property/ImageNode/ImageModification", ImageModificationPanel)
         kernel.register(
             "property/ImageNode/ImageVectorisation", ImageVectorisationPanel
+        )
+        kernel.register(
+            "property/ImageNode/ImageContour", ImageContourPanel
         )
 
         kernel.register("window/Console", Console)
