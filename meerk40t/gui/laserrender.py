@@ -546,7 +546,13 @@ class LaserRender:
         self.draw_cutcode(cutcode, gc, x, y)
 
     def draw_cutcode(
-        self, cutcode: CutCode, gc: wx.GraphicsContext, x: int = 0, y: int = 0
+        self,
+        cutcode: CutCode,
+        gc: wx.GraphicsContext,
+        x: int = 0, y: int = 0,
+        raster_as_image: bool = True,
+        residual = None,
+        laserspot_width = None,
     ):
         """
         Draw cutcode object into wxPython graphics code.
@@ -561,64 +567,19 @@ class LaserRender:
         @param y: offset in y direction
         @return:
         """
-        gcscale = get_gc_scale(gc)
-        # print (f"Scale: {gcscale} - {mat_param}")
-        highlight_color = Color("magenta")
-        wx_color = wx.Colour(swizzlecolor(highlight_color))
-        highlight_pen = wx.Pen(wx_color)
-        highlight_pen.SetStyle(wx.PENSTYLE_SHORT_DASH)
-        p = None
-        last_point = None
-        color = None
-        for cut in cutcode:
-            if hasattr(cut, "visible") and getattr(cut, "visible") is False:
-                continue
-            if cut.highlighted:
-                c = highlight_color
-            else:
-                c = cut.color
-            if c is None:
-                c = 0
-            try:
-                if c.value is None:
-                    c = 0
-            except AttributeError:
-                pass
-            if c is not color:
-                color = c
-                last_point = None
-                if p is not None:
-                    gc.StrokePath(p)
-                    del p
-                p = gc.CreatePath()
-                self._penwidth(self.pen, 1 / gcscale)
-                self.set_pen(gc, c, alpha=127)
-            start = cut.start
-            end = cut.end
-            if p is None:
-                p = gc.CreatePath()
-            if last_point != start:
-                p.MoveToPoint(start[0] + x, start[1] + y)
-            if isinstance(cut, LineCut):
-                # Standard line cut. Applies to path object.
-                p.AddLineToPoint(end[0] + x, end[1] + y)
-            elif isinstance(cut, QuadCut):
-                # Standard quadratic bezier cut
-                p.AddQuadCurveToPoint(
-                    cut.c()[0] + x, cut.c()[1] + y, end[0] + x, end[1] + y
-                )
-            elif isinstance(cut, CubicCut):
-                # Standard cubic bezier cut
-                p.AddCurveToPoint(
-                    cut.c1()[0] + x,
-                    cut.c1()[1] + y,
-                    cut.c2()[0] + x,
-                    cut.c2()[1] + y,
-                    end[0] + x,
-                    end[1] + y,
-                )
-            elif isinstance(cut, RasterCut):
-                # Rastercut object.
+
+        def establish_linewidth(scale, spot_width):
+            default_pix = 1 / scale
+            # print (gcscale, laserspot_width, 1/gcscale)
+            pixelwidth = spot_width if spot_width is not None else default_pix
+            # How many pixels should the laserspotwidth be like,
+            # in any case at least 1 pixel, as otherwise it
+            # wouldn't show up under Linux/Darwin
+            return max(default_pix, pixelwidth)
+
+        def process_cut(cut, p, last_point):
+
+            def process_as_image():
                 image = cut.image
                 gc.PushState()
                 matrix = Matrix.scale(cut.step_x, cut.step_y)
@@ -649,7 +610,7 @@ class LaserRender:
                     gc.DrawBitmap(cut._cache, 0, 0, cut._cache_width, cut._cache_height)
                     if cut.highlighted:
                         # gc.SetBrush(wx.RED_BRUSH)
-                        self._penwidth(highlight_pen, 3 / _gcscale)
+                        self._penwidth(highlight_pen, 3 / gcscale)
                         gc.SetPen(highlight_pen)
                         gc.DrawRectangle(0, 0, cut._cache_width, cut._cache_height)
                 else:
@@ -664,13 +625,99 @@ class LaserRender:
                         cut._cache_height,
                     )
                 gc.PopState()
-            elif isinstance(cut, PlotCut):
+
+            def process_as_raster():
                 p.MoveToPoint(start[0] + x, start[1] + y)
-                for ox, oy, pon, px, py in cut.plot:
+                try:
+                    cache = cut._cache
+                    cache_id = cut._cache_id
+                except AttributeError:
+                    cache = None
+                    cache_id = -1
+                if cache_id != "raster":
+                    # Cached plot is invalid.
+                    cache = None
+                if cache is None:
+                    cache = list(cut.plot.plot())
+                    cut._cache = cache
+                    cut._cache_id = "raster"
+                todraw = cache
+                if residual is None:
+                    maxcount = -1
+                else:
+                    maxcount = int(len(todraw) * residual)
+                count = 0
+                for px, py, pon in todraw:
                     if pon == 0:
                         p.MoveToPoint(px + x, py + y)
                     else:
                         p.AddLineToPoint(px + x, py + y)
+                    count += 1
+                    if 0 < maxcount < count:
+                        break
+
+            def process_as_plot():
+                p.MoveToPoint(start[0] + x, start[1] + y)
+                try:
+                    cache = cut._cache
+                    cache_id = cut._cache_id
+                except AttributeError:
+                    cache = None
+                    cache_id = -1
+                if cache_id != "plot":
+                    # Cached plot is invalid.
+                    cache = None
+                if cache is None:
+                    cache = list(cut.plot)
+                    cut._cache = cache
+                    cut._cache_id = "plot"
+                todraw = cache
+                if residual is None:
+                    maxcount = -1
+                else:
+                    maxcount = int(len(todraw) * residual)
+                count = 0
+                for ox, oy, pon, px, py in todraw:
+                    if pon == 0:
+                        p.MoveToPoint(px + x, py + y)
+                    else:
+                        p.AddLineToPoint(px + x, py + y)
+                    count += 1
+                    if 0 < maxcount < count:
+                        break
+
+            start = cut.start
+            end = cut.end
+            if last_point != start:
+                p.MoveToPoint(start[0] + x, start[1] + y)
+
+            if isinstance(cut, LineCut):
+                # Standard line cut. Applies to path object.
+                p.AddLineToPoint(end[0] + x, end[1] + y)
+            elif isinstance(cut, QuadCut):
+                # Standard quadratic bezier cut
+                p.AddQuadCurveToPoint(
+                    cut.c()[0] + x, cut.c()[1] + y, end[0] + x, end[1] + y
+                )
+            elif isinstance(cut, CubicCut):
+                # Standard cubic bezier cut
+                p.AddCurveToPoint(
+                    cut.c1()[0] + x,
+                    cut.c1()[1] + y,
+                    cut.c2()[0] + x,
+                    cut.c2()[1] + y,
+                    end[0] + x,
+                    end[1] + y,
+                )
+            elif isinstance(cut, RasterCut):
+                # Rastercut object.
+                if raster_as_image:
+                    process_as_image()
+                else:
+                    process_as_raster()
+
+            elif isinstance(cut, PlotCut):
+                process_as_plot()
             elif isinstance(cut, DwellCut):
                 pass
             elif isinstance(cut, WaitCut):
@@ -683,9 +730,55 @@ class LaserRender:
                 pass
             elif isinstance(cut, OutputCut):
                 pass
-            last_point = end
+            return end
+
+        gcscale = get_gc_scale(gc)
+        pixelwidth = establish_linewidth(gcscale, laserspot_width)
+        defaultwidth = 1 / gcscale
+        if defaultwidth > 0.25 * pixelwidth:
+            defaultwidth = 0
+        # print (f"Scale: {gcscale} - {mat_param}")
+        highlight_color = Color("magenta")
+        wx_color = wx.Colour(swizzlecolor(highlight_color))
+        highlight_pen = wx.Pen(wx_color)
+        highlight_pen.SetStyle(wx.PENSTYLE_SHORT_DASH)
+        p = None
+        last_point = None
+        color = None
+        for cut in cutcode:
+            if hasattr(cut, "visible") and getattr(cut, "visible") is False:
+                continue
+            c = highlight_color if cut.highlighted else cut.color
+            if c is None:
+                c = 0
+            try:
+                if c.value is None:
+                    c = 0
+            except AttributeError:
+                pass
+            if c is not color:
+                if p is not None:
+                    gc.StrokePath(p)
+                    if defaultwidth:
+                        self._penwidth(self.pen, defaultwidth)
+                        self.set_pen(gc, color, 192)
+                        gc.StrokePath(p)
+                    del p
+                color = c
+                last_point = None
+                p = gc.CreatePath()
+                self._penwidth(self.pen, pixelwidth)
+                alphavalue = 192 if laserspot_width is None else 64
+                self.set_pen(gc, c, alpha=alphavalue)
+            if p is None:
+                p = gc.CreatePath()
+            last_point = process_cut(cut, p, last_point)
         if p is not None:
             gc.StrokePath(p)
+            if defaultwidth:
+                self._penwidth(self.pen, defaultwidth)
+                self.set_pen(gc, c, 192)
+                gc.StrokePath(p)
             del p
 
     def cache_geomstr(self, node, gc):
