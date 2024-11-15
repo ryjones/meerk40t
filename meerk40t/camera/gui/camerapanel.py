@@ -19,7 +19,7 @@ from meerk40t.gui.scene.sceneconst import (
 )
 from meerk40t.gui.scene.scenepanel import ScenePanel
 from meerk40t.gui.scene.widget import Widget
-from meerk40t.gui.wxutils import TextCtrl, wxButton, wxBitmapButton, wxCheckBox, wxListCtrl
+from meerk40t.gui.wxutils import TextCtrl, wxButton, wxBitmapButton, wxCheckBox, wxListCtrl, wxStaticText
 from meerk40t.kernel import Job, signal_listener
 from meerk40t.svgelements import Color
 
@@ -98,6 +98,7 @@ class CameraPanel(wx.Panel, Job):
             self.check_perspective = wxCheckBox(
                 self, wx.ID_ANY, _("Correct Perspective")
             )
+            self.button_config = wxButton(self, wx.ID_ANY, "*")
             self.slider_fps = wx.Slider(
                 self,
                 wx.ID_ANY,
@@ -127,6 +128,8 @@ class CameraPanel(wx.Panel, Job):
 
         # end wxGlade
         sizer_main = wx.BoxSizer(wx.VERTICAL)
+        self.label_camera = wxStaticText(self, wx.ID_ANY, "XXX")
+        sizer_main.Add(self.label_camera, 0, wx.EXPAND, 0)
         if not pane:
             self.button_update.SetToolTip(_("Update Image"))
             self.button_update.SetSize(self.button_update.GetBestSize())
@@ -164,6 +167,7 @@ class CameraPanel(wx.Panel, Job):
             sizer_checkboxes.Add(self.check_fisheye, 0, 0, 0)
             sizer_checkboxes.Add(self.check_perspective, 0, 0, 0)
             sizer_controls.Add(sizer_checkboxes, 1, wx.EXPAND, 0)
+            sizer_checkboxes.Add(self.button_config, 0, wx.EXPAND, 0)
             sizer_controls.Add(self.slider_fps, 1, wx.EXPAND, 0)
             sizer_controls.Add(self.button_detect, 0, 0, 0)
             sizer_main.Add(sizer_controls, 1, wx.EXPAND, 0)
@@ -396,6 +400,7 @@ class CameraPanel(wx.Panel, Job):
             self.available_resolutions = []
             if self.camera.is_physical:
                 self.available_resolutions = self.camera.guess_supported_resolutions()
+            self.label_camera.SetLabel(self.camera.label)
 
         return swap
 
@@ -705,27 +710,11 @@ class CamInterfaceWidget(Widget):
                 self.cam.Bind(wx.EVT_MENU, self.cam.swap_camera(uri), id=item.GetId())
             if sub_menu.MenuItemCount:
                 sub_menu.AppendSeparator()
-
-            item = sub_menu.Append(
-                wx.ID_ANY, _("USB {usb_index}").format(usb_index=0), ""
-            )
-            self.cam.Bind(wx.EVT_MENU, self.cam.swap_camera(0), id=item.GetId())
-            item = sub_menu.Append(
-                wx.ID_ANY, _("USB {usb_index}").format(usb_index=1), ""
-            )
-            self.cam.Bind(wx.EVT_MENU, self.cam.swap_camera(1), id=item.GetId())
-            item = sub_menu.Append(
-                wx.ID_ANY, _("USB {usb_index}").format(usb_index=2), ""
-            )
-            self.cam.Bind(wx.EVT_MENU, self.cam.swap_camera(2), id=item.GetId())
-            item = sub_menu.Append(
-                wx.ID_ANY, _("USB {usb_index}").format(usb_index=3), ""
-            )
-            self.cam.Bind(wx.EVT_MENU, self.cam.swap_camera(3), id=item.GetId())
-            item = sub_menu.Append(
-                wx.ID_ANY, _("USB {usb_index}").format(usb_index=4), ""
-            )
-            self.cam.Bind(wx.EVT_MENU, self.cam.swap_camera(4), id=item.GetId())
+            for usb_no in range(5):
+                item = sub_menu.Append(
+                    wx.ID_ANY, _("USB {usb_index}").format(usb_index=usb_no), ""
+                )
+                self.cam.Bind(wx.EVT_MENU, self.cam.swap_camera(usb_no), id=item.GetId())
 
             menu.Append(
                 wx.ID_ANY,

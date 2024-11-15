@@ -12,7 +12,7 @@ CORNER_SIZE = 25
 class Camera(Service):
     def __init__(self, kernel, camera_path, *args, **kwargs):
         Service.__init__(self, kernel, camera_path)
-
+        _ = kernel.translation
         self._camera_job = None
 
         self._current_frame = None
@@ -30,6 +30,10 @@ class Camera(Service):
         self._image_points = []  # 2d points in image plane.
 
         self.camera_lock = threading.Lock()
+        try:
+            index = int(camera_path[7:])
+        except ValueError:
+            index = 0
 
         self.connection_attempts = 0
         self.frame_attempts = 0
@@ -38,16 +42,46 @@ class Camera(Service):
         self.camera_thread = None
         self.max_tries_connect = 10
         self.max_tries_frame = 10
+        choices = [
+            {
+                "attr": "label",
+                "object": self,
+                "section": "_00_General",
+                "default": _("Camera {index}").format(index=index),
+                "type": str,
+                "label": "Name",
+                "tip": _("Descriptive name of the camera"),
+            },
+            {
+                "attr": "correction_fisheye",
+                "object": self,
+                "section": "_10_Correction",
+                "default": False,
+                "type": bool,
+                "label": _("Fisheye"),
+                "tip": _("Do we need to adjust for some fisheye distortion"),
+            },
+            {
+                "attr": "correction_perspective",
+                "object": self,
+                "section": "_10_Correction",
+                "default": False,
+                "type": bool,
+                "label": _("Perspective"),
+                "tip": _("Do we need to adjust for some angular distortion"),
+            },
+
+        ]
+        kernel.register_choices(f"camera_{index}", choices)
         self.setting(int, "width", 640)
         self.setting(int, "height", 480)
-        self.setting(bool, "correction_fisheye", False)
-        self.setting(bool, "correction_perspective", False)
+        # self.setting(bool, "correction_fisheye", False)
+        # self.setting(bool, "correction_perspective", False)
         self.setting(list, "fisheye", None)
         self.setting(list, "perspective", None)
-        try:
-            index = int(camera_path[7:])
-        except ValueError:
-            index = 0
+        # Corresponding corner points for perspective points, they are by default the bed dimensions
+        self.setting(list, "corner_points", ( (0, 0), (100, 0), (100, 100), (0, 100) ) )
+
         self.setting(str, "uri", str(index))
         self.setting(int, "index", index)
         self.setting(bool, "autonormal", False)
@@ -55,6 +89,7 @@ class Camera(Service):
         self.setting(str, "preserve_aspect", "xMinYMin meet")
         self.fisheye_k = None
         self.fisheye_d = None
+        self.scene_points = None
         if self.fisheye is not None and len(self.fisheye) != 0:
             self.fisheye_k, self.fisheye_d = self.fisheye
 
@@ -66,7 +101,13 @@ class Camera(Service):
     def __repr__(self):
         return "Camera()"
 
-    @property 
+    def announce_device_change(self, device):
+        self.scene_points = None
+
+    def calculate_and_apply_scene_points(self, frame):
+        return frame
+
+    @property
     def is_virtual(self):
         try:
             i = int(self.uri)
@@ -74,7 +115,7 @@ class Camera(Service):
         except ValueError:
             return True
 
-    @property 
+    @property
     def is_physical(self):
         try:
             i = int(self.uri)
@@ -213,7 +254,7 @@ class Camera(Service):
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
             self.logger (
-                f"Capture: {str(self.capture)}\n" + 
+                f"Capture: {str(self.capture)}\n" +
                 f"Frame resolution set to: ({cap.get(cv2.CAP_PROP_FRAME_WIDTH)}x{cap.get(cv2.CAP_PROP_FRAME_HEIGHT)})"
             )
 
@@ -279,7 +320,7 @@ class Camera(Service):
         for combinations in (
             (640, 480, "0.3MP 4:3"),
             (800, 600, "0.5MP 4:3"),
-            (960, 544, "0.5MP 30:17"), 
+            (960, 544, "0.5MP 30:17"),
             (1280, 720, "0.9MP 16:9"),
             (1440, 1080, "1.5MP 16:9"),
             (1920, 1080, "2.1MP 16:9"),
@@ -347,6 +388,9 @@ class Camera(Service):
             )
             M = cv2.getPerspectiveTransform(rect, dst)
             frame = cv2.warpPerspective(frame, M, (dest_width, dest_height))
+            # Do we have corresponding scene points
+            if self.scene_points is None:
+                self.scene_points
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         if self.autonormal:
             cv2.normalize(frame, frame, 0, 255, cv2.NORM_MINMAX)
