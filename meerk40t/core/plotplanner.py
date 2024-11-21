@@ -50,7 +50,7 @@ class PlotPlanner(Parameters):
         **kwargs,
     ):
         super().__init__(settings, **kwargs)
-        self.debug = False
+        self.debug = True
 
         self.abort = False
         self.force_shift = False
@@ -224,9 +224,32 @@ class PlotPlanner(Parameters):
         """
 
         def debug(plot, manipulator):
+            x_min = float("inf")
+            y_min = float("inf")
+            x_max = -float("inf")
+            y_max = -float("inf")
+            valid = False
             for q in plot:
-                print(f"Manipulator: {str(q)}, {str(manipulator)}")
+                if q is not None:
+                    x = q[0]
+                    y = q[1]
+                    if x is None or y is None:
+                        continue
+                    x_max = max(x, x_max)
+                    y_max = max(y, y_max)
+                    x_min = min(x, x_min)
+                    y_min = min(y, y_min)
+                    valid = True
+                # print(f"Manipulator: {str(q)}, {str(manipulator)}")
                 yield q
+            if valid:
+                if y_max == y_min:
+                    print (f"{str(manipulator)}: ratio=invalid , x: {x_min:.0f} - {x_max:.0f},  y: {y_min:.0f} - {y_max:.0f}")
+                else:
+                    ratio = (x_max - x_min) / (y_max - y_min)
+                    print (f"{str(manipulator)}: ratio={ratio:.3f} , x: {x_min:.0f} - {x_max:.0f},  y: {y_min:.0f} - {y_max:.0f}")
+            else:
+                print (f"{str(manipulator)} provided invalid data for display")
 
         if self.single is not None:
             plot = self.single.process(plot)
