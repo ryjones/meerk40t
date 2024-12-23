@@ -1110,7 +1110,9 @@ class ShadowTree:
             self.wxtree.Enable(not self._freeze)
             if status:
                 self.wxtree.Freeze()
+                self.do_not_select = True
             else:
+                self.do_not_select = False
                 self.wxtree.Thaw()
                 self.wxtree.Refresh()
 
