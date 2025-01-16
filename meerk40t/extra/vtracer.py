@@ -184,26 +184,41 @@ def plugin(kernel, lifecycle=None):
                 kernel.root.signal("freeze_tree", True)
                 t0 = perf_counter()
                 bb = node.bounds
+                im_wd = bb[2] - bb[0]
+                im_ht = bb[3] - bb[1]
+                im_x = bb[0]
+                im_y = bb[1]
+                flag = node.prevent_crop
+                if not flag:
+                    node.prevent_crop = True
+                    node.update(None)
+                    bb2 = node.bounds
+                    dx = bb2[0] - bb[0]
+                    dy = bb2[1] - bb[1]
+                    bb = ( bb[0] - dx, bb[1] - dy, bb[2] - dx, bb[3] - dy )
+                    node.prevent_crop = flag
+                    node.update(None)
                 image = node.image
+
                 image.save(input_file)
                 convert_image_to_svg_py(image_path=input_file, out_path=output_file, colormode="binary")
                 t1 = perf_counter()
                 # print (f"Vectorization took {t1-t0:.1f}sec, now loading file, executing {cmd}")
-                # elements.suppress_updates = True
-                # cmd = (
-                #     f'xload "{output_file}"' +
-                #     f' {Length(bb[0]).length_mm}' +
-                #     f' {Length(bb[1]).length_mm}' +
-                #     f' {Length(bb[2] - bb[0]).length_mm}' +
-                #     f' {Length(bb[3] - bb[1]).length_mm}'
-                # )
-                # kernel.root(f"{cmd}\n")
                 elements.suppress_updates = True
-                nodes = simplified_load(output_file, bb)
-                elem = kernel.elements.elem_branch.add(type="group", label=f"VTrace ({node.display_label()})")
-                for e in nodes:
-                    elem.add_node(e)
-                elements.suppress_updates = False
+                cmd = (
+                    f'xload "{output_file}"' +
+                    f' {Length(im_x).length_mm}' +
+                    f' {Length(im_y).length_mm}'
+                    f' {Length(im_wd).length_mm}' +
+                    f' {Length(im_ht).length_mm}'
+                )
+                kernel.root(f"{cmd}\n")
+                # elements.suppress_updates = True
+                # nodes = simplified_load(output_file, bb)
+                # elem = kernel.elements.elem_branch.add(type="group", label=f"VTrace ({node.display_label()})")
+                # for e in nodes:
+                #     elem.add_node(e)
+                # elements.suppress_updates = False
                 t2 = perf_counter()
                 # print (f"Loading took {t2-t1:.1f}sec")
                 try:
