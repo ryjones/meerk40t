@@ -1003,6 +1003,9 @@ class GRBLDevice(Service, Status):
         """
         return self.view.iposition(self.driver.native_x, self.driver.native_y)
 
+    def zcurrent(self):
+        return self.view.iposition_z(self.driver.native_z)
+
     @property
     def native(self):
         """

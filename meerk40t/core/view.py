@@ -41,6 +41,7 @@ class View:
         self._source = None
         self._destination = None
         self._matrix = None
+        self.z_axis = "z"
         self.reset()
 
     def realize(self):
@@ -311,6 +312,19 @@ class View:
         res.x = res.x + off_x
         res.y = res.y + off_y
         return res
+
+    def z_transform(self, z_value):
+        # This could translate to a different axis / units, eg. a rotary value
+        return self.z_axis, z_value
+    
+    def z_position(self, z):
+        """
+        Position from the source to the destination position. The result is in destination units.
+        @param z:
+        """
+        if not isinstance(z, (int, float)):
+            z = Length(z, unitless=1).units
+        return self.z_transform(z)
 
     def scene_position(self, x, y):
         if not isinstance(x, (int, float)):

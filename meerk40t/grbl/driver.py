@@ -35,6 +35,7 @@ class GRBLDriver(Parameters):
         self.paused = False
         self.native_x = 0
         self.native_y = 0
+        self.native_z = 0
 
         self.mpos_x = 0
         self.mpos_y = 0
@@ -211,6 +212,50 @@ class GRBLDriver(Parameters):
                 "driver;position",
                 (old_current[0], old_current[1], new_current[0], new_current[1]),
             )
+
+    def move_abs_z(self, z):
+        """
+        Requests laser move to absolute position x, y in physical units
+
+        @param x:
+        @param y:
+        @return:
+        """
+        self._g90_absolute()
+        self._clean()
+        old_current = self.service.current_z
+        z_axis, z_value = self.service.view.z_position(z)
+        self._move_z(z_axis, z_value)
+        new_current = self.service.zcurrent
+        if self._signal_updates:
+            self.service.signal(
+                "driver;zposition",
+                (old_current, new_current[1]),
+            )
+
+    def move_rel(self, dx, dy):
+        """
+        Requests laser move relative position dx, dy in physical units
+
+        @param dx:
+        @param dy:
+        @return:
+        """
+        # self._g90_absolute()
+        # self._clean()
+        # old_current = self.service.current
+        # x, y = old_current
+        # x += dx
+        # y += dy
+        # x, y = self.service.view.position(x, y)
+        # self._move(x, y)
+
+        self._g91_relative()
+        self._clean()
+        old_current = self.service.current
+
+        unit_dx, unit_dy = self.service.view.position(dx, dy, vector=True)
+        self._move(unit_dx, unit_dy)
 
     def dwell(self, time_in_ms):
         """
