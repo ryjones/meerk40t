@@ -58,7 +58,7 @@ jobs:
         python3.11 -m pip install ezdxf
         python3.11 -m pip install pyserial
         python3.11 -m pip install bitarray
-        python3.11 -m pip install scipy==1.10.0
+        python3.11 -m pip install scipy==1.15.2
         python3.11 -m pip install pyclipr
         python3.11 -m pip install numba
         python3.11 -m pip install .
