@@ -11,7 +11,7 @@ on:
 
 jobs:
   build-ubuntu:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout meerk40t
       uses: actions/checkout@v4
